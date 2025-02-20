@@ -1,0 +1,1 @@
+From nvcr.io/nvidia/deepstream:7.1-samples-multiarch
