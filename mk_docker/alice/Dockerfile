@@ -1,63 +1,71 @@
-FROM alicevision/alicevision-deps:2025.02.21-ubuntu22.04-cuda12.1.1
+# ARG MESHROOM_VERSION
+# ARG AV_VERSION
+# ARG CUDA_VERSION
+# ARG UBUNTU_VERSION
+FROM alicevision/meshroom-deps:develop-av2.2.8-ubuntu$20.4-cuda12.1
 LABEL maintainer="AliceVision Team alicevision-team@googlegroups.com"
-ARG TARGET_ARCHITECTURE=core
 
-# use CUDA_VERSION to select the image version to use
-# see https://hub.docker.com/r/nvidia/cuda/
-#
-# AV_VERSION=2.2.8
-# CUDA_VERSION=11.0
-# UBUNTU_VERSION=20.04
-# docker build \
-#    --build-arg CUDA_VERSION=${CUDA_VERSION} \
-#    --build-arg UBUNTU_VERSION${UBUNTU_VERSION} \
-#    --build-arg AV_VERSION=2.2.8.develop \
-#    --tag alicevision/alicevision:${AV_VERSION}-ubuntu${UBUNTU_VERSION}-cuda${CUDA_VERSION} \
-#     -f Dockerfile_ubuntu .
-#
-# then execute with nvidia docker (https://github.com/nvidia/nvidia-docker/wiki/Installation-(version-2.0))
-# docker run -it --runtime=nvidia alicevision/alicevision:{AV_VERSION}-ubuntu${UBUNTU_VERSION}-cuda${CUDA_VERSION}
+# Execute with nvidia docker (https://github.com/nvidia/nvidia-docker/wiki/Installation-(version-2.0))
+# docker run -it --runtime nvidia -p 2222:22 --name meshroom -v</path/to/your/data>:/data alicevision/meshroom:develop-av2.2.8.develop-ubuntu20.04-cuda11.0
+# ssh -p 2222 -X root@<docker host> /opt/Meshroom_bundle/Meshroom # Password is 'meshroom'
 
-
-# OS/Version (FILE): cat /etc/issue.net
-# Cuda version (ENV): $CUDA_VERSION
-
-ENV AV_DEV=/opt/AliceVision_git \
-    AV_BUILD=/tmp/AliceVision_build \
+ENV MESHROOM_DEV=/opt/Meshroom \
+    MESHROOM_BUILD=/tmp/Meshroom_build \
+    MESHROOM_BUNDLE=/opt/Meshroom_bundle \
     AV_INSTALL=/opt/AliceVision_install \
-    AV_BUNDLE=/opt/AliceVision_bundle \
-    PATH="${PATH}:${AV_BUNDLE}" \
-    VERBOSE=1
+    QT_DIR=/opt/Qt/5.15.2/gcc_64 \
+    PATH="${PATH}:${MESHROOM_BUNDLE}" \
+    OPENIMAGEIO_LIBRARY=/opt/AliceVision_install/lib
 
-COPY CMakeLists.txt *.md ${AV_DEV}/
-COPY src ${AV_DEV}/src
+COPY *.txt *.md *.py ${MESHROOM_DEV}/
+COPY ./docs ${MESHROOM_DEV}/docs
+COPY ./meshroom ${MESHROOM_DEV}/meshroom
+COPY ./tests ${MESHROOM_DEV}/tests
+COPY ./bin ${MESHROOM_DEV}/bin
 
-WORKDIR "${AV_BUILD}"
+WORKDIR ${MESHROOM_DEV}
 
-COPY docker ${AV_DEV}/docker
+RUN python3 setup.py install_exe -d "${MESHROOM_BUNDLE}" && \
+        find ${MESHROOM_BUNDLE} -name "*Qt5Web*" -delete && \
+        find ${MESHROOM_BUNDLE} -name "*Qt5Designer*" -delete && \
+        rm -rf ${MESHROOM_BUNDLE}/lib/PySide2/typesystems/ \
+                ${MESHROOM_BUNDLE}/lib/PySide2/examples/ \
+                ${MESHROOM_BUNDLE}/lib/PySide2/include/ \
+                ${MESHROOM_BUNDLE}/lib/PySide2/Qt/translations/ \
+                ${MESHROOM_BUNDLE}/lib/PySide2/Qt/resources/ \
+                ${MESHROOM_BUNDLE}/lib/PySide2/QtWeb* \
+                ${MESHROOM_BUNDLE}/lib/PySide2/pyside2-lupdate \
+                ${MESHROOM_BUNDLE}/lib/PySide2/rcc \
+                ${MESHROOM_BUNDLE}/lib/PySide2/designer
 
-RUN export CPU_CORES=`${AV_DEV}/docker/check-cpu.sh`; \
-         cmake -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS:BOOL=ON \
-        -DTARGET_ARCHITECTURE=${TARGET_ARCHITECTURE} \
-        -DALICEVISION_BUILD_DEPENDENCIES:BOOL=OFF \
-        -DCMAKE_PREFIX_PATH:PATH="${AV_INSTALL}" \
-        -DCMAKE_INSTALL_PREFIX:PATH="${AV_INSTALL}" \
-        -DALICEVISION_BUNDLE_PREFIX="${AV_BUNDLE}" \
-        -DALICEVISION_USE_ALEMBIC:BOOL=ON \
-        -DMINIGLOG:BOOL=ON \
-        -DALICEVISION_USE_CCTAG:BOOL=ON \
-        -DALICEVISION_USE_OPENCV:BOOL=ON \
-        -DALICEVISION_USE_OPENGV:BOOL=ON \
-        -DALICEVISION_USE_POPSIFT:BOOL=ON \
-        -DALICEVISION_USE_CUDA:BOOL=ON \
-        -DALICEVISION_USE_ONNX_GPU:BOOL=OFF \
-        -DALICEVISION_BUILD_DOC:BOOL=OFF \
-        -DALICEVISION_BUILD_SWIG_BINDING:BOOL=ON \
-        -DSWIG_DIR:PATH="${AV_INSTALL}/share/swig/4.3.0" -DSWIG_EXECUTABLE:PATH="${AV_INSTALL}/bin-deps/swig" \
-        "${AV_DEV}" && \
-    make install -j${CPU_CORES} && \
-    make bundle && \
-    rm -rf "${AV_BUILD}" "${AV_DEV}" && \
-    echo "export ALICEVISION_SENSOR_DB=${AV_BUNDLE}/share/aliceVision/cameraSensors.db" >> /etc/profile.d/alicevision.sh && \
-    echo "export ALICEVISION_ROOT=${AV_BUNDLE}" >> /etc/profile.d/alicevision.sh
+WORKDIR ${MESHROOM_BUILD}
+
+# Build Meshroom plugins
+RUN cmake "${MESHROOM_DEV}" -DALICEVISION_ROOT="${AV_INSTALL}" -DCMAKE_INSTALL_PREFIX="${MESHROOM_BUNDLE}/qtPlugins"
+RUN make "-j$(nproc)" QtAliceVision
+RUN make "-j$(nproc)" && \
+	rm -rf "${MESHROOM_BUILD}" "${MESHROOM_DEV}" \
+		${MESHROOM_BUNDLE}/aliceVision/share/doc \
+		${MESHROOM_BUNDLE}/aliceVision/share/eigen3 \
+		${MESHROOM_BUNDLE}/aliceVision/share/fonts \
+		${MESHROOM_BUNDLE}/aliceVision/share/lemon \
+		${MESHROOM_BUNDLE}/aliceVision/share/libraw \
+		${MESHROOM_BUNDLE}/aliceVision/share/man/ \
+		aliceVision/share/pkgconfig
+
+# Copy missing libassimpsceneimport.so
+COPY dl/libassimpsceneimport.so ${MESHROOM_BUNDLE}/lib/PySide2/Qt/plugins/sceneparsers
+
+# Enable SSH X11 forwarding, needed when the Docker image
+# is run on a remote machine
+RUN apt install ssh xauth && \
+	systemctl enable ssh && \
+	mkdir -p /run/sshd
+
+RUN sed -i "s/^.*X11Forwarding.*$/X11Forwarding yes/; s/^.*X11UseLocalhost.*$/X11UseLocalhost no/; s/^.*PermitRootLogin prohibit-password/PermitRootLogin yes/; s/^.*X11UseLocalhost.*/X11UseLocalhost no/;" /etc/ssh/sshd_config
+RUN echo "root:meshroom" | chpasswd
+
+WORKDIR /root
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D"]
