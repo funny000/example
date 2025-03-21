@@ -2,7 +2,7 @@
 # ARG AV_VERSION
 # ARG CUDA_VERSION
 # ARG UBUNTU_VERSION
-FROM alicevision/meshroom-deps:develop-av2.2.8-ubuntu$20.4-cuda12.1
+FROM alicevision/meshroom-deps:develop-av2.2.8-ubuntu20.4-cuda12.1
 LABEL maintainer="AliceVision Team alicevision-team@googlegroups.com"
 
 # Execute with nvidia docker (https://github.com/nvidia/nvidia-docker/wiki/Installation-(version-2.0))
