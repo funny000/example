@@ -1,1 +1,26 @@
-From nvcr.io/nvidia/deepstream:7.1-samples-multiarch
+#From nvcr.io/nvidia/deepstream:7.1-samples-multiarch
+# Dockerfile
+FROM nvcr.io/nvidia/cuda:11.7.1-base-ubuntu20.04
+
+# 设置环境变量
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    python3.8 \
+    python3-pip \
+    wget \
+    git \
+    libgl1-mesa-glx \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 PyTorch 1.13 和 CUDA 11.7 版本
+RUN pip3 install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 \
+    --extra-index-url https://download.pytorch.org/whl/cu117
+
+# 设置工作目录
+WORKDIR /workspace
+
+# 默认命令
+CMD ["bash"]
