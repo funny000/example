@@ -3,5 +3,5 @@
 ARG PYTORCH="1.13.1"
 ARG CUDA="11.7"
 ARG CUDNN="8.5.2"
-
-FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
+#-cudnn${CUDNN}-devel
+FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}
