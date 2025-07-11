@@ -29,8 +29,8 @@ RUN bash ./Anaconda3-2024.10-1-Linux-x86_64.sh -b && rm ./Anaconda3-2024.10-1-Li
 ENV PATH=$CONDA_DIR/bin:$PATH
 
 # Install prerequisites
-RUN apt-get update && apt-get install -y \
-        sudo \
-        udev \
-&& rm -rf /var/lib/apt/lists/* \
-&& apt-get clean
+# RUN apt-get update && apt-get install -y \
+#         sudo \
+#         udev \
+# && rm -rf /var/lib/apt/lists/* \
+# && apt-get clean
